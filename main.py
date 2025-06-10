@@ -22,12 +22,14 @@ def load_quotes():
     try:
         response = requests.get(GOOGLE_SHEET_URL)
         if response.status_code == 200:
-            return [line.strip() for line in response.text.splitlines() if line.strip()]
+            # Разбиваем на строки и убираем пустые
+            lines = [line.strip() for line in response.text.splitlines() if line.strip()]
+            return lines
         else:
             print(f"[ОШИБКА] Не удалось загрузить цитаты. Код ответа: {response.status_code}")
             return []
     except Exception as e:
-        print(f"[ОШИБКА] Не могу подключиться к Google Sheets: {e}")
+        print(f"[ОШИБКА] При загрузке цитат: {e}")
         return []
 
 
@@ -67,9 +69,11 @@ async def send_quote(application):
     quote = get_new_quote(quotes, log)
 
     try:
-        # Убираем лишние символы
-        cleaned_quote = quote.encode('utf-8', 'ignore').decode('utf-8')
-        await application.bot.send_message(chat_id=config.CHANNEL_ID, text=cleaned_quote)
+        # Очистка текста от "битых" символов
+        cleaned_quote = quote.encode('utf-8', errors='ignore').decode('utf-8')
+
+        await application.bot.send_message(chat_id=CHANNEL_ID, text=cleaned_quote)
+
         log.append({
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "quote": cleaned_quote
