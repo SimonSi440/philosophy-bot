@@ -22,6 +22,7 @@ def load_quotes():
     try:
         response = requests.get(GOOGLE_SHEET_URL)
         if response.status_code == 200:
+            # Указываем явную кодировку UTF-8
             return [line.strip() for line in response.text.splitlines() if line.strip()]
         else:
             print(f"[ОШИБКА] Не удалось загрузить цитаты. Код ответа: {response.status_code}")
@@ -67,13 +68,15 @@ async def send_quote(application):
     quote = get_new_quote(quotes, log)
 
     try:
-        await application.bot.send_message(chat_id=CHANNEL_ID, text=quote)
+        # Убираем лишние символы
+        cleaned_quote = quote.encode('utf-8', 'ignore').decode('utf-8')
+        await application.bot.send_message(chat_id=CHANNEL_ID, text=cleaned_quote)
         log.append({
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "quote": quote
+            "quote": cleaned_quote
         })
         save_log(log)
-        print(f"[{datetime.now()}] Цитата отправлена: {quote}")
+        print(f"[{datetime.now()}] Цитата отправлена: {cleaned_quote}")
     except Exception as e:
         print(f"[{datetime.now()}] Ошибка при отправке: {e}")
 
