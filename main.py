@@ -7,12 +7,11 @@ import schedule
 import time
 import json
 import os
-import config
 
 # Загрузка цитат из Google Таблицы
 def load_quotes():
     try:
-        response = requests.get(config.GOOGLE_SHEET_URL)
+        response = requests.get(os.getenv("GOOGLE_SHEET_URL"))
         if response.status_code == 200:
             return [line.strip() for line in response.text.splitlines() if line.strip()]
         else:
@@ -56,15 +55,15 @@ async def send_quote(application: ApplicationBuilder):
     quote = get_new_quote(quotes, log)
 
     try:
-        await application.bot.send_message(chat_id=config.CHANNEL_ID, text=quote)
+        await application.bot.send_message(chat_id=os.getenv("CHANNEL_ID"), text=quote)
         log.append({
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "quote": quote
         })
         save_log(log)
-        print(f"[{datetime.now()}] Цитата отправлена")
+        print(f"[{datetime.now()}] Цитата успешно отправлена")
     except Exception as e:
-        print(f"[{datetime.now()}] Ошибка при отправке: {e}")
+        print(f"[ОШИБКА] Не могу отправить сообщение: {e}")
 
 # Обёртка для планировщика
 async def job_wrapper(application: ApplicationBuilder):
@@ -73,9 +72,15 @@ async def job_wrapper(application: ApplicationBuilder):
 def scheduled_job(application: ApplicationBuilder):
     asyncio.create_task(job_wrapper(application))
 
+# Функция для случайного времени
+def random_time(start_hour=8, end_hour=12):
+    hour = random.randint(start_hour, end_hour)
+    minute = random.randint(0, 59)
+    return f"{hour:02d}:{minute:02d}"
+
 # Главная функция запуска
 def main():
-    application = ApplicationBuilder().token(config.BOT_TOKEN).build()
+    application = ApplicationBuilder().token(os.getenv("BOT_TOKEN")).build()
 
     # Установка ежедневного расписания
     def schedule_daily():
@@ -91,7 +96,7 @@ def main():
 
         now = datetime.now().time()
         if now.hour == 0 and now.minute < 2:
-            print("🔄 Сброс расписания на новый день")
+            print("Сброс расписания на новый день")
             schedule.clear()
             schedule_daily()
             time.sleep(120)  # Защита от повторного запуска
