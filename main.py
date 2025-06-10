@@ -12,7 +12,7 @@ from telegram.ext import ApplicationBuilder
 # === Конфиг из переменных окружения ===
 BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID", "@your_channel")
-GOOGLE_SHEET_URL = os.getenv("GOOGLE_SHEET_URL", "https://docs.google.com/spreadsheets/d/.../export?format=csv&id=...&gid=...")
+GOOGLE_SHEET_URL = os.getenv("GOOGLE_SHEET_URL", "https://docs.google.com/spreadsheets/d/.../export?format=csv&id=...&gid=0")
 
 LOG_FILE = "quotes_log.json"
 
@@ -69,7 +69,7 @@ async def send_quote(application):
     try:
         # Убираем лишние символы
         cleaned_quote = quote.encode('utf-8', 'ignore').decode('utf-8')
-        await application.bot.send_message(chat_id=CHANNEL_ID, text=cleaned_quote)
+        await application.bot.send_message(chat_id=config.CHANNEL_ID, text=cleaned_quote)
         log.append({
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "quote": cleaned_quote
