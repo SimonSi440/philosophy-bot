@@ -22,7 +22,6 @@ def load_quotes():
     try:
         response = requests.get(GOOGLE_SHEET_URL)
         if response.status_code == 200:
-            # Указываем явную кодировку UTF-8
             return [line.strip() for line in response.text.splitlines() if line.strip()]
         else:
             print(f"[ОШИБКА] Не удалось загрузить цитаты. Код ответа: {response.status_code}")
