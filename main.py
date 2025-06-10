@@ -7,6 +7,16 @@ import schedule
 import time
 import json
 import os
+import logging
+from flask import Flask
+
+logging.basicConfig(level=logging.INFO)
+
+app = Flask(__name__)
+
+@app.route('/')
+def health_check():
+    return 'OK', 200
 
 # Загрузка цитат из Google Таблицы
 def load_quotes():
@@ -72,7 +82,7 @@ async def job_wrapper(application: ApplicationBuilder):
 def scheduled_job(application: ApplicationBuilder):
     asyncio.create_task(job_wrapper(application))
 
-# Функция для случайного времени
+# Функция случайного времени
 def random_time(start_hour=8, end_hour=12):
     hour = random.randint(start_hour, end_hour)
     minute = random.randint(0, 59)
