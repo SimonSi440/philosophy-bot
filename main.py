@@ -5,21 +5,30 @@ import asyncio
 import time
 import json
 import os
-import requests
 from telegram.ext import ApplicationBuilder
-
+from github import Github
 
 # === Конфиг из переменных окружения ===
 BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID", "@your_channel")
-
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "YOUR_GITHUB_TOKEN")
+REPO_OWNER = os.getenv("REPO_OWNER", "SimonSi440")
+REPO_NAME = os.getenv("REPO_NAME", "philosophy-bot")
 LOG_FILE = "quotes_log.json"
+QUOTES_FILE = "quotes.txt"
+
+
+# === Инициализация GitHub ===
+def init_github():
+    g = Github(GITHUB_TOKEN)
+    repo = g.get_repo(f"{REPO_OWNER}/{REPO_NAME}")
+    return repo
 
 
 # === Загрузка цитат из файла quotes.txt ===
 def load_quotes():
     try:
-        with open("quotes.txt", "r", encoding="utf-8") as f:
+        with open(QUOTES_FILE, "r", encoding="utf-8") as f:
             return [line.strip() for line in f if line.strip()]
     except Exception as e:
         print(f"[ОШИБКА] Не удалось загрузить цитаты: {e}")
@@ -27,19 +36,28 @@ def load_quotes():
 
 
 # === Логирование отправленных цитат ===
-def load_log():
-    if os.path.exists(LOG_FILE):
-        with open(LOG_FILE, "r", encoding="utf-8") as f:
-            try:
-                return json.load(f)
-            except json.JSONDecodeError:
-                return []
-    return []
+def load_log(repo):
+    try:
+        contents = repo.get_contents(LOG_FILE)
+        log_data = contents.decoded_content.decode('utf-8')
+        return json.loads(log_data)
+    except Exception as e:
+        print(f"[ОШИБКА] Не удалось загрузить логи: {e}")
+        return []
 
 
-def save_log(log):
-    with open(LOG_FILE, "w", encoding="utf-8") as f:
-        json.dump(log, f, ensure_ascii=False, indent=2)
+def save_log(repo, log):
+    try:
+        contents = repo.get_contents(LOG_FILE)
+        repo.update_file(
+            path=LOG_FILE,
+            message="Обновление логов",
+            content=json.dumps(log, ensure_ascii=False, indent=2),
+            sha=contents.sha
+        )
+        print(f"[{datetime.now()}] Логи успешно обновлены")
+    except Exception as e:
+        print(f"[ОШИБКА] Не удалось сохранить логи: {e}")
 
 
 # === Получение уникальной цитаты ===
@@ -48,16 +66,20 @@ def get_new_quote(quotes, log):
     available_quotes = [q for q in quotes if q not in used_quotes]
 
     if not available_quotes:
-        save_log([])
+        save_log(repo, [])
         return random.choice(quotes)
 
     return random.choice(available_quotes)
 
 
 # === Отправка цитаты в Telegram ===
-async def send_quote(application):
+async def send_quote(application, repo):
     quotes = load_quotes()
-    log = load_log()
+    log = load_log(repo)
+
+    if not quotes:
+        print("[ОШИБКА] Нет доступных цитат")
+        return
 
     quote = get_new_quote(quotes, log)
 
@@ -69,18 +91,18 @@ async def send_quote(application):
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "quote": cleaned_quote
         })
-        save_log(log)
+        save_log(repo, log)
         print(f"[{datetime.now()}] Цитата отправлена: {cleaned_quote}")
     except Exception as e:
         print(f"[{datetime.now()}] Ошибка при отправке: {e}")
 
 
 # === Планировщик задач ===
-async def job_wrapper(application):
-    await send_quote(application)
+async def job_wrapper(application, repo):
+    await send_quote(application, repo)
 
-def scheduled_job(application):
-    asyncio.create_task(job_wrapper(application))
+def scheduled_job(application, repo):
+    asyncio.create_task(job_wrapper(application, repo))
 
 
 # === Расписание ===
@@ -93,15 +115,16 @@ def random_time(start_hour=8, end_hour=12):
 # === Главная функция ===
 def main():
     application = ApplicationBuilder().token(BOT_TOKEN).build()
+    repo = init_github()
 
     def schedule_daily():
         daily_time = random_time()
         print(f"Цитата будет отправлена в {daily_time}")
-        schedule.every().day.at(daily_time).do(scheduled_job, application=application)
+        schedule.every().day.at(daily_time).do(scheduled_job, application=application, repo=repo)
 
     # Тестовая отправка при запуске
     print("[ТЕСТ] Отправляем тестовую цитату...")
-    asyncio.run(send_quote(application))
+    asyncio.run(send_quote(application, repo))
 
     # Настраиваем расписание
     schedule_daily()
