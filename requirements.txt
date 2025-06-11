@@ -1,6 +1,4 @@
-python-telegram-bot==20.0
-schedule
-requests
-PyGithub
 pandas
-aiofiles
+telegram
+schedule
+aiohttp
