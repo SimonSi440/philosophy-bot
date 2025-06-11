@@ -46,15 +46,17 @@ def log_error(message, repo=None):
 
 # === Буферизация логов ===
 log_buffer = []
+BUFFER_SIZE = 30  # Количество записей для буферизации
+BUFFER_INTERVAL = 300  # Интервал обновления логов на GitHub (в секундах)
 
 def buffer_log(repo):
     global log_buffer
     log_buffer.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    if len(log_buffer) >= 30:  # Записываем логи на GitHub каждые 30 записей
+    if len(log_buffer) >= BUFFER_SIZE:
         save_log_to_github(repo, LOG_LOG_FILE)
         log_buffer = []
 
-def save_log_to_github(repo, log_path):
+async def save_log_to_github(repo, log_path):
     try:
         log_content = ""
         if os.path.exists(log_path):
@@ -62,16 +64,16 @@ def save_log_to_github(repo, log_path):
                 log_content = f.read()
         
         try:
-            contents = repo.get_contents(LOG_LOG_FILE)
+            contents = repo.get_contents(log_path)
             repo.update_file(
-                path=LOG_LOG_FILE,
+                path=log_path,
                 message="Обновление логов",
                 content=log_content,
                 sha=contents.sha
             )
         except Exception as e:
             repo.create_file(
-                path=LOG_LOG_FILE,
+                path=log_path,
                 message="Создание логов",
                 content=log_content
             )
@@ -196,7 +198,7 @@ async def main():
     await start_web_server(port, repo)
 
     # Запуск бота
-    asyncio.create_task(application.run_polling(drop_pending_updates=True))
+    await application.run_polling(drop_pending_updates=True)
 
     # Планирование отправки цитат
     while True:
