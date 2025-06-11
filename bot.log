@@ -333,3 +333,4 @@
 
 "sha" wasn't supplied.: 422 {"message": "Invalid request.\n\n\"sha\" wasn't supplied.", "documentation_url": "https://docs.github.com/rest/repos/contents#create-or-update-file-contents", "status": "422"}
 [INFO] 2025-06-11 11:41:33.180019 - Логи успешно обновлены на GitHub
+[INFO] 2025-06-11 11:41:34.656596 - Логи успешно обновлены на GitHub
