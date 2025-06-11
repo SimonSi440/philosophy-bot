@@ -528,3 +528,4 @@
 [ERROR] 2025-06-11 11:13:56.545943 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded while calling a Python object
 [ERROR] 2025-06-11 11:13:56.546418 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded in comparison
 [ERROR] 2025-06-11 11:13:56.546725 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded while calling a Python object
+[INFO] 2025-06-11 11:13:58.108218 - Логи успешно обновлены на GitHub
