@@ -4,8 +4,8 @@ import asyncio
 import json
 import os
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from aiohttp import web
-from github import Github
+import schedule
+import aiohttp.web
 
 # === Конфиг из переменных окружения ===
 BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN")
@@ -122,16 +122,16 @@ def random_time(start_hour=8, end_hour=12):
 
 # === HTTP-сервер ===
 async def start_web_server(port):
-    app = web.Application()
+    app = aiohttp.web.Application()
     app.router.add_get('/', handle_request)
-    runner = web.AppRunner(app)
+    runner = aiohttp.web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, host='0.0.0.0', port=port)
+    site = aiohttp.web.TCPSite(runner, host='0.0.0.0', port=port)
     await site.start()
     log_info(f"HTTP-сервер запущен на порту {port}")
 
 async def handle_request(request):
-    return web.Response(text="OK")
+    return aiohttp.web.Response(text="OK")
 
 # === Главная функция ===
 async def main():
