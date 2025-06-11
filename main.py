@@ -111,10 +111,6 @@ async def main():
     application = ApplicationBuilder().token(BOT_TOKEN).build()
     repo = init_github()
 
-    # Тестовая отправка при запуске
-    print("[ТЕСТ] Отправляем тестовую цитату...")
-    await send_quote(application, repo)
-
     # Настраиваем расписание
     await schedule_daily(application, repo)
 
