@@ -7,22 +7,32 @@ import schedule
 import asyncio
 import time
 import config
-import os  # Импортируем os для работы с переменными окружения
+import os
+from aiohttp import web
 
 # Определяем LOG_PATH сразу после импорта os
 LOG_PATH = os.getenv("RENDER_TMP_DIR", "./")
 
 QUOTE_FILE = "mudrosti.csv"
 LOG_FILE = os.path.join(LOG_PATH, "quotes_log.json")
+LOG_LOG_FILE = os.path.join(LOG_PATH, "quotes_log.log")  # Путь к файлу логов
 
 # === Логирование в файл ===
 def log_info(message):
-    with open(os.path.join(LOG_PATH, "quotes_log.log"), "a", encoding="utf-8") as f:
-        f.write(f"[INFO] {datetime.now()} - {message}\n")
+    print(f"[INFO] {datetime.now()} - {message}")  # Вывод в консоль для отладки
+    try:
+        with open(LOG_LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(f"[INFO] {datetime.now()} - {message}\n")
+    except Exception as e:
+        print(f"Ошибка при записи лога: {e}")
 
 def log_error(message):
-    with open(os.path.join(LOG_PATH, "quotes_log.log"), "a", encoding="utf-8") as f:
-        f.write(f"[ERROR] {datetime.now()} - {message}\n")
+    print(f"[ERROR] {datetime.now()} - {message}")  # Вывод в консоль для отладки
+    try:
+        with open(LOG_LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(f"[ERROR] {datetime.now()} - {message}\n")
+    except Exception as e:
+        print(f"Ошибка при записи лога: {e}")
 
 def load_quotes():
     try:
@@ -88,14 +98,8 @@ async def send_quote(application: ApplicationBuilder):
         })
         save_log(log)
         log_info(f"Цитата успешно отправлена: {quote}")
-    except Conflict as e:
-        log_error(f"Ошибка Conflict: {e}. Убедитесь, что только один экземпляр бота работает.")
-    except NetworkError as e:
-        log_error(f"Сетевая ошибка: {e}")
-    except RetryAfter as e:
-        log_error(f"Превышено ограничение запросов. Попробуйте снова через {e.retry_after} секунд.")
     except Exception as e:
-        log_error(f"Неизвестная ошибка при отправке: {e}")
+        log_error(f"Ошибка при отправке цитаты: {e}")
 
 async def job_wrapper(application: ApplicationBuilder):
     await send_quote(application)
@@ -119,6 +123,19 @@ async def reset_logs(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Логи сброшены.")
     log_info(f"Команда /reset_logs от {update.effective_user.username}")
 
+# === HTTP-сервер для Render ===
+async def handle_request(request):
+    return web.Response(text="OK")
+
+async def start_web_server(port):
+    app = web.Application()
+    app.router.add_get('/', handle_request)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, host='0.0.0.0', port=port)
+    await site.start()
+    log_info(f"HTTP-сервер запущен на порту {port}")
+
 def main():
     application = ApplicationBuilder().token(config.BOT_TOKEN).build()
 
@@ -134,6 +151,12 @@ def main():
         schedule.every().day.at(daily_time).do(scheduled_job, application=application)
 
     schedule_daily()
+
+    # Получаем порт из переменных окружения Render
+    port = int(os.getenv('PORT', 8080))
+
+    # Запуск HTTP-сервера
+    asyncio.create_task(start_web_server(port))
 
     # Запуск бота
     application.run_polling(drop_pending_updates=True)
