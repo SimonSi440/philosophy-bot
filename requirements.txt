@@ -2,3 +2,4 @@ pandas
 telegram
 schedule
 aiohttp
+python-telegram-bot
