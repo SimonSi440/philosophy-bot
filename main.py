@@ -22,24 +22,51 @@ def init_github():
     repo = g.get_repo(f"{REPO_OWNER}/{REPO_NAME}")
     return repo
 
-# === Логирование в файл ===
-def log_info(message):
+# === Логирование в файл и на GitHub ===
+def log_info(message, repo):
     with open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write(f"[INFO] {datetime.now()} - {message}\n")
+    save_log_to_github(repo, LOG_PATH)
 
-def log_error(message):
+def log_error(message, repo):
     with open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write(f"[ERROR] {datetime.now()} - {message}\n")
+    save_log_to_github(repo, LOG_PATH)
+
+def save_log_to_github(repo, log_path):
+    try:
+        log_content = ""
+        if os.path.exists(log_path):
+            with open(log_path, "r", encoding="utf-8") as f:
+                log_content = f.read()
+        
+        try:
+            contents = repo.get_contents(LOG_PATH)
+            repo.update_file(
+                path=LOG_PATH,
+                message="Обновление логов",
+                content=log_content,
+                sha=contents.sha
+            )
+        except Exception as e:
+            repo.create_file(
+                path=LOG_PATH,
+                message="Создание логов",
+                content=log_content
+            )
+        log_info("Логи успешно обновлены на GitHub", repo)
+    except Exception as e:
+        log_error(f"Не удалось сохранить логи на GitHub: {e}", repo)
 
 # === Загрузка цитат из файла quotes.txt ===
 def load_quotes():
     try:
         with open(QUOTES_FILE, "r", encoding="utf-8") as f:
             quotes = [line.strip() for line in f if line.strip()]
-            log_info(f"Загружено {len(quotes)} цитат")
+            log_info(f"Загружено {len(quotes)} цитат", repo)
             return quotes
     except Exception as e:
-        log_error(f"Не удалось загрузить цитаты: {e}")
+        log_error(f"Не удалось загрузить цитаты: {e}", repo)
         return []
 
 # === Логирование отправленных цитат ===
@@ -48,10 +75,10 @@ def load_log(repo):
         contents = repo.get_contents(LOG_FILE)
         log_data = contents.decoded_content.decode('utf-8')
         log = json.loads(log_data)
-        log_info(f"Загружено {len(log)} записей из логов")
+        log_info(f"Загружено {len(log)} записей из логов", repo)
         return log
     except Exception as e:
-        log_error(f"Не удалось загрузить логи: {e}")
+        log_error(f"Не удалось загрузить логи: {e}", repo)
         return []
 
 def save_log(repo, log):
@@ -63,9 +90,9 @@ def save_log(repo, log):
             content=json.dumps(log, ensure_ascii=False, indent=2),
             sha=contents.sha
         )
-        log_info("Логи успешно обновлены")
+        log_info("Логи успешно обновлены", repo)
     except Exception as e:
-        log_error(f"Не удалось сохранить логи: {e}")
+        log_error(f"Не удалось сохранить логи: {e}", repo)
 
 # === Получение уникальной цитаты ===
 def get_new_quote(quotes, log):
@@ -73,18 +100,18 @@ def get_new_quote(quotes, log):
     available_quotes = [q for q in quotes if q not in used_quotes]
 
     if not available_quotes:
-        log_info("Нет доступных новых цитат, сбрасываем логи и выбираем случайную цитату")
+        log_info("Нет доступных новых цитат, сбрасываем логи и выбираем случайную цитату", repo)
         save_log(repo, [])
         return random.choice(quotes)
 
-    log_info(f"Выбрана уникальная цитата из {len(available_quotes)} доступных цитат")
+    log_info(f"Выбрана уникальная цитата из {len(available_quotes)} доступных цитат", repo)
     return random.choice(available_quotes)
 
 # === Отправка цитаты в Telegram ===
 async def send_quote(application, repo):
     quotes = load_quotes()
     if not quotes:
-        log_error("Нет доступных цитат")
+        log_error("Нет доступных цитат", repo)
         return
 
     log = load_log(repo)
@@ -92,16 +119,16 @@ async def send_quote(application, repo):
 
     try:
         cleaned_quote = quote.encode('utf-8', errors='ignore').decode('utf-8')
-        log_info(f"Попытка отправки цитаты: {cleaned_quote}")
+        log_info(f"Попытка отправки цитаты: {cleaned_quote}", repo)
         await application.bot.send_message(chat_id=CHANNEL_ID, text=cleaned_quote)
         log.append({
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "quote": cleaned_quote
         })
         await save_log(repo, log)
-        log_info(f"Цитата отправлена: {cleaned_quote}")
+        log_info(f"Цитата отправлена: {cleaned_quote}", repo)
     except Exception as e:
-        log_error(f"Ошибка при отправке: {e}")
+        log_error(f"Ошибка при отправке: {e}", repo)
 
 # === Генерация случайного времени ===
 def random_time(start_hour=14, end_hour=15):
@@ -112,37 +139,38 @@ def random_time(start_hour=14, end_hour=15):
 # === Планировщик задач ===
 async def schedule_daily(application, repo):
     daily_time = random_time()
-    log_info(f"Цитата будет отправлена в {daily_time}")
+    log_info(f"Цитата будет отправлена в {daily_time}", repo)
     send_time = datetime.strptime(daily_time, "%H:%M").time()
     while True:
         now = datetime.now().time()
         if now >= send_time:
-            log_info(f"Начало отправки цитаты в {now}")
+            log_info(f"Начало отправки цитаты в {now}", repo)
             await send_quote(application, repo)
-            log_info(f"Окончание отправки цитаты в {now}")
+            log_info(f"Окончание отправки цитаты в {now}", repo)
             break
         await asyncio.sleep(60)  # Проверяем каждую минуту
 
 # === Команды для управления ботом ===
 async def start(update, context):
     await update.message.reply_text("Привет! Я бот для отправки цитат.")
-    log_info(f"Команда /start от {update.effective_user.username}")
+    log_info(f"Команда /start от {update.effective_user.username}", repo)
 
 async def send_test_quote(update, context):
     application = context.application
     repo = init_github()
     await send_quote(application, repo)
     await update.message.reply_text("Тестовая цитата отправлена!")
-    log_info(f"Команда /send_test_quote от {update.effective_user.username}")
+    log_info(f"Команда /send_test_quote от {update.effective_user.username}", repo)
 
 async def reset_logs(update, context):
     repo = init_github()
     await save_log(repo, [])
     await update.message.reply_text("Логи сброшены.")
-    log_info(f"Команда /reset_logs от {update.effective_user.username}")
+    log_info(f"Команда /reset_logs от {update.effective_user.username}", repo)
 
 # === Главная функция ===
 async def main():
+    global repo
     application = ApplicationBuilder().token(BOT_TOKEN).build()
     repo = init_github()
 
@@ -158,7 +186,7 @@ async def main():
     while True:
         now = datetime.now().time()
         if now.hour == 0 and now.minute < 2:
-            log_info("🔄 Сброс расписания на новый день")
+            log_info("🔄 Сброс расписания на новый день", repo)
             await schedule_daily(application, repo)
         await asyncio.sleep(60)  # Проверяем каждую минуту
 
