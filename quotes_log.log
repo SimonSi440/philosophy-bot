@@ -560,3 +560,28 @@
 [ERROR] 2025-06-11 18:20:57.491274 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded
 [ERROR] 2025-06-11 18:20:57.491669 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded in comparison
 [ERROR] 2025-06-11 18:20:57.491742 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded while calling a Python object
+[INFO] 2025-06-11 18:20:59.024245 - Логи успешно обновлены на GitHub
+[ERROR] 2025-06-11 18:21:00.375852 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded
+[ERROR] 2025-06-11 18:21:01.393545 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded while calling a Python object
+[ERROR] 2025-06-11 18:21:02.394915 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded
+[ERROR] 2025-06-11 18:21:03.396241 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded
+[ERROR] 2025-06-11 18:21:04.396741 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded while calling a Python object
+[ERROR] 2025-06-11 18:21:05.396850 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded in comparison
+[ERROR] 2025-06-11 18:21:06.397013 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded in __instancecheck__
+[ERROR] 2025-06-11 18:21:07.397173 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded
+[ERROR] 2025-06-11 18:21:08.397398 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded
+[ERROR] 2025-06-11 18:21:08.397961 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded
+[ERROR] 2025-06-11 18:21:08.398405 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded in comparison
+[ERROR] 2025-06-11 18:21:08.398499 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded while calling a Python object
+[ERROR] 2025-06-11 18:21:09.707922 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded
+[ERROR] 2025-06-11 18:21:10.725827 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded while calling a Python object
+[ERROR] 2025-06-11 18:21:11.727408 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded
+[ERROR] 2025-06-11 18:21:12.729039 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded
+[ERROR] 2025-06-11 18:21:13.729393 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded while calling a Python object
+[ERROR] 2025-06-11 18:21:14.729652 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded in comparison
+[ERROR] 2025-06-11 18:21:15.729898 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded in __instancecheck__
+[ERROR] 2025-06-11 18:21:16.730026 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded
+[ERROR] 2025-06-11 18:21:17.730208 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded
+[ERROR] 2025-06-11 18:21:17.730859 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded
+[ERROR] 2025-06-11 18:21:17.731239 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded in comparison
+[ERROR] 2025-06-11 18:21:17.731311 - Не удалось сохранить логи на GitHub: maximum recursion depth exceeded while calling a Python object
