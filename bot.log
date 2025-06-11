@@ -328,3 +328,7 @@
 [INFO] 2025-06-11 11:41:24.277516 - Логи успешно обновлены на GitHub
 [INFO] 2025-06-11 11:41:25.824471 - Логи успешно обновлены на GitHub
 [INFO] 2025-06-11 11:41:27.352747 - Логи успешно обновлены на GitHub
+[INFO] 2025-06-11 11:41:28.871310 - Логи успешно обновлены на GitHub
+[ERROR] 2025-06-11 11:41:31.630391 - Не удалось сохранить логи на GitHub: Invalid request.
+
+"sha" wasn't supplied.: 422 {"message": "Invalid request.\n\n\"sha\" wasn't supplied.", "documentation_url": "https://docs.github.com/rest/repos/contents#create-or-update-file-contents", "status": "422"}
