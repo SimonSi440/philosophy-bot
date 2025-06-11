@@ -29,20 +29,30 @@ def init_github():
         log_error(f"Ошибка при инициализации GitHub: {e}")
         return None
 
-# === Логирование в файл и на GitHub ===
+# === Логирование в файл ===
 def log_info(message, repo=None):
     print(f"[INFO] {datetime.now()} - {message}")  # Вывод в консоль для отладки
     with open(LOG_LOG_FILE, "a", encoding="utf-8") as f:
         f.write(f"[INFO] {datetime.now()} - {message}\n")
     if repo:
-        save_log_to_github(repo, LOG_LOG_FILE)
+        buffer_log(repo)
 
 def log_error(message, repo=None):
     print(f"[ERROR] {datetime.now()} - {message}")  # Вывод в консоль для отладки
     with open(LOG_LOG_FILE, "a", encoding="utf-8") as f:
         f.write(f"[ERROR] {datetime.now()} - {message}\n")
     if repo:
+        buffer_log(repo)
+
+# === Буферизация логов ===
+log_buffer = []
+
+def buffer_log(repo):
+    global log_buffer
+    log_buffer.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    if len(log_buffer) >= 30:  # Записываем логи на GitHub каждые 30 записей
         save_log_to_github(repo, LOG_LOG_FILE)
+        log_buffer = []
 
 def save_log_to_github(repo, log_path):
     try:
@@ -139,7 +149,7 @@ async def send_quote(application: ApplicationBuilder, repo):
 async def job_wrapper(application: ApplicationBuilder, repo):
     await send_quote(application, repo)
 
-async def start_web_server(port):
+async def start_web_server(port, repo):
     app = web.Application()
     app.router.add_get('/', handle_request)
     runner = web.AppRunner(app)
@@ -151,6 +161,22 @@ async def start_web_server(port):
 async def handle_request(request):
     return web.Response(text="OK")
 
+# === Команды для управления ботом ===
+async def start(update, context: ContextTypes.DEFAULT_TYPE, repo):
+    await update.message.reply_text("Привет! Я бот для отправки цитат.")
+    log_info(f"Команда /start от {update.effective_user.username}", repo)
+
+async def send_test_quote(update, context: ContextTypes.DEFAULT_TYPE, repo):
+    application = context.application
+    await send_quote(application, repo)
+    await update.message.reply_text("Тестовая цитата отправлена!")
+    log_info(f"Команда /send_test_quote от {update.effective_user.username}", repo)
+
+async def reset_logs(update, context: ContextTypes.DEFAULT_TYPE, repo):
+    save_log([])
+    await update.message.reply_text("Логи сброшены.")
+    log_info(f"Команда /reset_logs от {update.effective_user.username}", repo)
+
 async def main():
     application = ApplicationBuilder().token(BOT_TOKEN).build()
 
@@ -158,16 +184,16 @@ async def main():
     repo = init_github()
 
     # Добавление команд
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("send_test_quote", send_test_quote))
-    application.add_handler(CommandHandler("reset_logs", reset_logs))
+    application.add_handler(CommandHandler("start", lambda update, context: start(update, context, repo)))
+    application.add_handler(CommandHandler("send_test_quote", lambda update, context: send_test_quote(update, context, repo)))
+    application.add_handler(CommandHandler("reset_logs", lambda update, context: reset_logs(update, context, repo)))
     log_info("Команды успешно зарегистрированы", repo)
 
     # Получаем порт из переменных окружения Render
     port = int(os.getenv('PORT', 8080))
 
     # Запуск HTTP-сервера
-    await start_web_server(port)
+    await start_web_server(port, repo)
 
     # Запуск бота
     asyncio.create_task(application.run_polling(drop_pending_updates=True))
@@ -182,22 +208,6 @@ async def main():
             log_info(f"Окончание отправки цитаты в {now.time()}", repo)
             next_send_time += timedelta(days=1)  # Смещаем время на следующий день
         await asyncio.sleep(60)  # Проверяем каждую минуту
-
-# === Команды для управления ботом ===
-async def start(update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Я бот для отправки цитат.")
-    log_info(f"Команда /start от {update.effective_user.username}", repo)
-
-async def send_test_quote(update, context: ContextTypes.DEFAULT_TYPE):
-    application = context.application
-    await send_quote(application, repo)
-    await update.message.reply_text("Тестовая цитата отправлена!")
-    log_info(f"Команда /send_test_quote от {update.effective_user.username}", repo)
-
-async def reset_logs(update, context: ContextTypes.DEFAULT_TYPE):
-    save_log([])
-    await update.message.reply_text("Логи сброшены.")
-    log_info(f"Команда /reset_logs от {update.effective_user.username}", repo)
 
 if __name__ == '__main__':
     repo = init_github()
