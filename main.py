@@ -89,7 +89,7 @@ async def send_quote(application, repo):
         print(f"[{datetime.now()}] Ошибка при отправке: {e}")
 
 # === Генерация случайного времени ===
-def random_time(start_hour=8, end_hour=12):
+def random_time(start_hour=13, end_hour=14):
     hour = random.randint(start_hour, end_hour)
     minute = random.randint(0, 59)
     return f"{hour:02d}:{minute:02d}"
