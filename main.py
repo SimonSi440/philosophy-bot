@@ -104,7 +104,7 @@ async def send_quote(application, repo):
         log_error(f"Ошибка при отправке: {e}")
 
 # === Генерация случайного времени ===
-def random_time(start_hour=13, end_hour=14):
+def random_time(start_hour=14, end_hour=15):
     hour = random.randint(start_hour, end_hour)
     minute = random.randint(0, 59)
     return f"{hour:02d}:{minute:02d}"
