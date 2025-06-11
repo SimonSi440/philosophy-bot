@@ -1,23 +1,26 @@
 import random
 import pandas as pd
 import json
-from datetime import datetime, time as dt_time
+from datetime import datetime
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import schedule
 import asyncio
 import time
 import config
 
-QUOTE_FILE = "mudrosti.csv"
-LOG_FILE = "quotes_log.json"
+# Используем временную директорию Render
+LOG_PATH = os.getenv("RENDER_TMP_DIR", "./")
+
+QUOTE_FILE = os.path.join(LOG_PATH, "mudrosti.csv")
+LOG_FILE = os.path.join(LOG_PATH, "quotes_log.json")
 
 # === Логирование в файл ===
 def log_info(message):
-    with open(LOG_FILE.replace(".json", ".log"), "a", encoding="utf-8") as f:
+    with open(os.path.join(LOG_PATH, "quotes_log.log"), "a", encoding="utf-8") as f:
         f.write(f"[INFO] {datetime.now()} - {message}\n")
 
 def log_error(message):
-    with open(LOG_FILE.replace(".json", ".log"), "a", encoding="utf-8") as f:
+    with open(os.path.join(LOG_PATH, "quotes_log.log"), "a", encoding="utf-8") as f:
         f.write(f"[ERROR] {datetime.now()} - {message}\n")
 
 def load_quotes():
@@ -76,15 +79,22 @@ async def send_quote(application: ApplicationBuilder):
     quote = get_new_quote(quotes, log)
 
     try:
+        log_info(f"Попытка отправки цитаты: {quote}")
         await application.bot.send_message(chat_id=config.CHANNEL_ID, text=quote)
         log.append({
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "quote": quote
         })
         save_log(log)
-        log_info(f"Цитата отправлена: {quote}")
+        log_info(f"Цитата успешно отправлена: {quote}")
+    except Conflict as e:
+        log_error(f"Ошибка Conflict: {e}. Убедитесь, что только один экземпляр бота работает.")
+    except NetworkError as e:
+        log_error(f"Сетевая ошибка: {e}")
+    except RetryAfter as e:
+        log_error(f"Превышено ограничение запросов. Попробуйте снова через {e.retry_after} секунд.")
     except Exception as e:
-        log_error(f"Ошибка при отправке: {e}")
+        log_error(f"Неизвестная ошибка при отправке: {e}")
 
 async def job_wrapper(application: ApplicationBuilder):
     await send_quote(application)
@@ -130,13 +140,6 @@ def main():
     while True:
         schedule.run_pending()
         time.sleep(1)
-
-        now = datetime.now().time()
-        if now.hour == 0 and now.minute < 2:
-            log_info("🔄 Сброс расписания на новый день")
-            schedule.clear()
-            schedule_daily()
-            time.sleep(120)
 
 if __name__ == '__main__':
     main()
