@@ -23,15 +23,17 @@ def init_github():
     return repo
 
 # === Логирование в файл и на GitHub ===
-def log_info(message, repo):
+def log_info(message, repo=None):
     with open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write(f"[INFO] {datetime.now()} - {message}\n")
-    save_log_to_github(repo, LOG_PATH)
+    if repo:
+        save_log_to_github(repo, LOG_PATH)
 
-def log_error(message, repo):
+def log_error(message, repo=None):
     with open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write(f"[ERROR] {datetime.now()} - {message}\n")
-    save_log_to_github(repo, LOG_PATH)
+    if repo:
+        save_log_to_github(repo, LOG_PATH)
 
 def save_log_to_github(repo, log_path):
     try:
@@ -63,10 +65,10 @@ def load_quotes():
     try:
         with open(QUOTES_FILE, "r", encoding="utf-8") as f:
             quotes = [line.strip() for line in f if line.strip()]
-            log_info(f"Загружено {len(quotes)} цитат", repo)
+            log_info(f"Загружено {len(quotes)} цитат")
             return quotes
     except Exception as e:
-        log_error(f"Не удалось загрузить цитаты: {e}", repo)
+        log_error(f"Не удалось загрузить цитаты: {e}")
         return []
 
 # === Логирование отправленных цитат ===
@@ -75,10 +77,10 @@ def load_log(repo):
         contents = repo.get_contents(LOG_FILE)
         log_data = contents.decoded_content.decode('utf-8')
         log = json.loads(log_data)
-        log_info(f"Загружено {len(log)} записей из логов", repo)
+        log_info(f"Загружено {len(log)} записей из логов")
         return log
     except Exception as e:
-        log_error(f"Не удалось загрузить логи: {e}", repo)
+        log_error(f"Не удалось загрузить логи: {e}")
         return []
 
 def save_log(repo, log):
@@ -92,7 +94,7 @@ def save_log(repo, log):
         )
         log_info("Логи успешно обновлены", repo)
     except Exception as e:
-        log_error(f"Не удалось сохранить логи: {e}", repo)
+        log_error(f"Не удалось сохранить логи: {e}")
 
 # === Получение уникальной цитаты ===
 def get_new_quote(quotes, log):
@@ -131,7 +133,7 @@ async def send_quote(application, repo):
         log_error(f"Ошибка при отправке: {e}", repo)
 
 # === Генерация случайного времени ===
-def random_time(start_hour=14, end_hour=15):
+def random_time(start_hour=13, end_hour=14):
     hour = random.randint(start_hour, end_hour)
     minute = random.randint(0, 59)
     return f"{hour:02d}:{minute:02d}"
@@ -175,19 +177,31 @@ async def main():
     repo = init_github()
 
     # Добавление команд
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("send_test_quote", send_test_quote))
-    application.add_handler(CommandHandler("reset_logs", reset_logs))
+    try:
+        application.add_handler(CommandHandler("start", start))
+        application.add_handler(CommandHandler("send_test_quote", send_test_quote))
+        application.add_handler(CommandHandler("reset_logs", reset_logs))
+        log_info("Команды успешно зарегистрированы", repo)
+    except Exception as e:
+        log_error(f"Ошибка при регистрации команд: {e}", repo)
+        return
 
     # Настраиваем расписание
-    await schedule_daily(application, repo)
+    try:
+        await schedule_daily(application, repo)
+    except Exception as e:
+        log_error(f"Ошибка при настройке расписания: {e}", repo)
+        return
 
     # Бесконечный цикл планировщика
     while True:
         now = datetime.now().time()
         if now.hour == 0 and now.minute < 2:
             log_info("🔄 Сброс расписания на новый день", repo)
-            await schedule_daily(application, repo)
+            try:
+                await schedule_daily(application, repo)
+            except Exception as e:
+                log_error(f"Ошибка при сбросе расписания: {e}", repo)
         await asyncio.sleep(60)  # Проверяем каждую минуту
 
 if __name__ == '__main__':
