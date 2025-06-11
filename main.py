@@ -1,8 +1,6 @@
 import random
-from datetime import datetime
-import schedule
+from datetime import datetime, time as dt_time
 import asyncio
-import time
 import json
 import os
 from telegram.ext import ApplicationBuilder
@@ -17,13 +15,11 @@ REPO_NAME = os.getenv("REPO_NAME", "philosophy-bot")
 LOG_FILE = "quotes_log.json"
 QUOTES_FILE = "quotes.txt"
 
-
 # === Инициализация GitHub ===
 def init_github():
     g = Github(GITHUB_TOKEN)
     repo = g.get_repo(f"{REPO_OWNER}/{REPO_NAME}")
     return repo
-
 
 # === Загрузка цитат из файла quotes.txt ===
 def load_quotes():
@@ -34,7 +30,6 @@ def load_quotes():
         print(f"[ОШИБКА] Не удалось загрузить цитаты: {e}")
         return []
 
-
 # === Логирование отправленных цитат ===
 def load_log(repo):
     try:
@@ -44,7 +39,6 @@ def load_log(repo):
     except Exception as e:
         print(f"[ОШИБКА] Не удалось загрузить логи: {e}")
         return []
-
 
 def save_log(repo, log):
     try:
@@ -59,7 +53,6 @@ def save_log(repo, log):
     except Exception as e:
         print(f"[ОШИБКА] Не удалось сохранить логи: {e}")
 
-
 # === Получение уникальной цитаты ===
 def get_new_quote(quotes, log):
     used_quotes = [entry["quote"] for entry in log]
@@ -70,7 +63,6 @@ def get_new_quote(quotes, log):
         return random.choice(quotes)
 
     return random.choice(available_quotes)
-
 
 # === Отправка цитаты в Telegram ===
 async def send_quote(application, repo):
@@ -96,51 +88,43 @@ async def send_quote(application, repo):
     except Exception as e:
         print(f"[{datetime.now()}] Ошибка при отправке: {e}")
 
-
-# === Планировщик задач ===
-async def job_wrapper(application, repo):
-    await send_quote(application, repo)
-
-def scheduled_job(application, repo):
-    asyncio.create_task(job_wrapper(application, repo))
-
-
-# === Расписание ===
+# === Генерация случайного времени ===
 def random_time(start_hour=8, end_hour=12):
     hour = random.randint(start_hour, end_hour)
     minute = random.randint(0, 59)
     return f"{hour:02d}:{minute:02d}"
 
+# === Планировщик задач ===
+async def schedule_daily(application, repo):
+    daily_time = random_time()
+    print(f"Цитата будет отправлена в {daily_time}")
+    send_time = datetime.strptime(daily_time, "%H:%M").time()
+    while True:
+        now = datetime.now().time()
+        if now >= send_time:
+            await send_quote(application, repo)
+            break
+        await asyncio.sleep(60)  # Проверяем каждую минуту
 
 # === Главная функция ===
-def main():
+async def main():
     application = ApplicationBuilder().token(BOT_TOKEN).build()
     repo = init_github()
 
-    def schedule_daily():
-        daily_time = random_time()
-        print(f"Цитата будет отправлена в {daily_time}")
-        schedule.every().day.at(daily_time).do(scheduled_job, application=application, repo=repo)
-
     # Тестовая отправка при запуске
     print("[ТЕСТ] Отправляем тестовую цитату...")
-    asyncio.run(send_quote(application, repo))
+    await send_quote(application, repo)
 
     # Настраиваем расписание
-    schedule_daily()
+    await schedule_daily(application, repo)
 
     # Бесконечный цикл планировщика
     while True:
-        schedule.run_pending()
-        time.sleep(1)
-
         now = datetime.now().time()
         if now.hour == 0 and now.minute < 2:
             print("🔄 Сброс расписания на новый день")
-            schedule.clear()
-            schedule_daily()
-            time.sleep(120)  # Защита от дублирования
-
+            await schedule_daily(application, repo)
+        await asyncio.sleep(60)  # Проверяем каждую минуту
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
