@@ -7,12 +7,10 @@ import schedule
 import asyncio
 import time
 import config
+import os  # Добавляем импорт модуля os
 
-# Используем временную директорию Render
-LOG_PATH = os.getenv("RENDER_TMP_DIR", "./")
-
-QUOTE_FILE = os.path.join(LOG_PATH, "mudrosti.csv")
-LOG_FILE = os.path.join(LOG_PATH, "quotes_log.json")
+QUOTE_FILE = "mudrosti.csv"
+LOG_FILE = "quotes_log.json"
 
 # === Логирование в файл ===
 def log_info(message):
