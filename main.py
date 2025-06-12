@@ -1,11 +1,14 @@
 import asyncio
-from datetime import datetime, time as dt_time
+from datetime import datetime, time as dt_time, timedelta
 import os
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from aiohttp import web
 from github import Github
 import json
 import random
+
+# === Импорт необходимых модулей ===
+import os
 
 # === Конфиг из переменных окружения ===
 BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN")
@@ -142,10 +145,10 @@ async def main():
     await start_web_server(port)
 
     # Запуск бота
-    await application.run_polling(drop_pending_updates=True)
+    bot_task = asyncio.create_task(application.run_polling(drop_pending_updates=True))
 
     # Планирование отправки цитат
-    target_time = dt_time(10, 0)  # Время отправки цитаты — 12:00
+    target_time = dt_time(10, 0)  # Время отправки цитаты — 10:00
     while True:
         now = datetime.now()
         today_target_time = datetime.combine(now.date(), target_time)
@@ -153,6 +156,10 @@ async def main():
             log_info(f"Начало отправки цитаты в {today_target_time.time()}")
             await send_quote(application, repo)
             log_info(f"Окончание отправки цитаты в {today_target_time.time()}")
+            # Обновляем время следующей отправки на завтра
+            next_send_time = today_target_time + timedelta(days=1)
+            while datetime.now() < next_send_time:
+                await asyncio.sleep(60)  # Ждем до следующего дня
         await asyncio.sleep(60)  # Проверяем каждую минуту
 
 if __name__ == '__main__':
