@@ -6,18 +6,20 @@ import schedule
 import asyncio
 import time
 import config
+from flask import Flask
 
 # Пути к файлам
 QUOTE_FILE = "quotes.txt"
 LOG_FILE = "quotes_log.json"
 
+# Создание Flask-приложения
+app = Flask(__name__)
 
 # Загрузка цитат из CSV (как обычный текст)
 def load_quotes():
     with open(QUOTE_FILE, "r", encoding="utf-8") as f:
         quotes = [line.strip() for line in f if line.strip()]
     return quotes
-
 
 # Загрузка лога
 def load_log():
@@ -27,19 +29,16 @@ def load_log():
     except (FileNotFoundError, json.JSONDecodeError):
         return []
 
-
 # Сохранение лога
 def save_log(log):
     with open(LOG_FILE, "w", encoding="utf-8") as f:
         json.dump(log, f, ensure_ascii=False, indent=2)
 
-
 # Случайное время публикации
-def random_time(start_hour=16, end_hour=17):
+def random_time(start_hour=9, end_hour=12):
     hour = random.randint(start_hour, end_hour)
     minute = random.randint(0, 59)
     return f"{hour:02d}:{minute:02d}"
-
 
 # Получить новую неповторённую цитату
 def get_new_quote(quotes, log):
@@ -51,7 +50,6 @@ def get_new_quote(quotes, log):
         return random.choice(quotes)
 
     return random.choice(available_quotes)
-
 
 # Отправка цитаты в Telegram
 async def send_quote(application: ApplicationBuilder):
@@ -71,16 +69,13 @@ async def send_quote(application: ApplicationBuilder):
     except Exception as e:
         print(f"[{datetime.now()}] Ошибка при отправке: {e}")
 
-
 # Обёртка для планировщика
 async def job_wrapper(application: ApplicationBuilder):
     await send_quote(application)
 
-
 # Функция для запуска задачи в планировщике
 def scheduled_job(application: ApplicationBuilder):
     asyncio.create_task(job_wrapper(application))
-
 
 # Основная функция запуска бота
 def main():
@@ -110,6 +105,12 @@ def main():
             schedule_daily()
             time.sleep(120)  # Чтобы не вызвать дважды
 
+# Создаем маршрут для проверки работы сервера
+@app.route('/')
+def index():
+    return 'Telegram Bot is running!'
 
+# Запуск Flask-приложения
 if __name__ == '__main__':
-    main()
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
