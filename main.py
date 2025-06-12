@@ -6,7 +6,6 @@ from telegram.ext import ApplicationBuilder, ContextTypes
 import schedule
 import asyncio
 import time
-import config
 from flask import Flask
 
 # Пути к файлам
@@ -18,9 +17,13 @@ app = Flask(__name__)
 
 # Загрузка цитат из CSV (как обычный текст)
 def load_quotes():
-    with open(QUOTE_FILE, "r", encoding="utf-8") as f:
-        quotes = [line.strip() for line in f if line.strip()]
-    return quotes
+    try:
+        with open(QUOTE_FILE, "r", encoding="utf-8") as f:
+            quotes = [line.strip() for line in f if line.strip()]
+            return quotes
+    except FileNotFoundError:
+        print(f"[{datetime.now()}] Файл цитат {QUOTE_FILE} не найден.")
+        return []
 
 # Загрузка лога
 def load_log():
@@ -57,6 +60,10 @@ async def send_quote(application: ApplicationBuilder):
     quotes = load_quotes()
     log = load_log()
 
+    if not quotes:
+        print(f"[{datetime.now()}] Нет доступных цитат для отправки.")
+        return
+
     quote = get_new_quote(quotes, log)
 
     try:
@@ -92,7 +99,10 @@ def main():
 
     # Тестовая отправка при запуске
     print("[ТЕСТ] Отправляем тестовую цитату...")
-    asyncio.run(send_quote(application))
+    try:
+        asyncio.run(send_quote(application))
+    except Exception as e:
+        print(f"[{datetime.now()}] Ошибка при тестовой отправке: {e}")
 
     # Бесконечный цикл планировщика
     while True:
