@@ -92,10 +92,8 @@ def main():
 
     # Тестовая отправка при запуске
     print("[ТЕСТ] Отправляем тестовую цитату...")
-    try:
-    asyncio.run(send_quote(application))
-except Exception as e:
-    print(f"[ТЕСТ] Ошибка при отправке: {e}")
+    loop = asyncio.get_event_loop()
+loop.run_until_complete(send_quote(application))
 
     # Бесконечный цикл планировщика
     while True:
