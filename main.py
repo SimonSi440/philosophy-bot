@@ -144,11 +144,8 @@ async def main():
     # Запуск HTTP-сервера
     await start_web_server(port)
 
-    # Запуск бота
-    bot_task = asyncio.create_task(application.run_polling(drop_pending_updates=True))
-
     # Планирование отправки цитат
-    target_time = dt_time(10, 0)  # Время отправки цитаты — 12:13
+    target_time = dt_time(10, 0)  # Время отправки цитаты — 10:00
     while True:
         now = datetime.now()
         today_target_time = datetime.combine(now.date(), target_time)
@@ -156,10 +153,10 @@ async def main():
             log_info(f"Начало отправки цитаты в {today_target_time.time()}")
             await send_quote(application, repo)
             log_info(f"Окончание отправки цитаты в {today_target_time.time()}")
-            # Обновляем время следующей отправки на завтра
+            # Ждем до следующего дня
             next_send_time = today_target_time + timedelta(days=1)
             while datetime.now() < next_send_time:
-                await asyncio.sleep(60)  # Ждем до следующего дня
+                await asyncio.sleep(60)  # Ждем каждую минуту
         await asyncio.sleep(60)  # Проверяем каждую минуту
 
 if __name__ == '__main__':
