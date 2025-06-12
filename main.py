@@ -1,10 +1,14 @@
 import asyncio
-from datetime import datetime, time, timezone
+from datetime import datetime, time as dt_time, timezone, timedelta
 import os
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from aiohttp import web
 from github import Github
 import json
 import random
+
+# === Импорт необходимых модулей ===
+import os
 
 # === Конфигурация ===
 BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN")
@@ -107,6 +111,19 @@ async def reset_logs(update, context, repo):
     await update.message.reply_text("Логи успешно сброшены.")
     log_info(f"Логи сброшены пользователем {update.effective_user.username}")
 
+# === HTTP-сервер ===
+async def start_web_server(port):
+    app = web.Application()
+    app.router.add_get('/', handle_request)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, host='0.0.0.0', port=port)
+    await site.start()
+    log_info(f"HTTP-сервер запущен на порту {port}")
+
+async def handle_request(request):
+    return web.Response(text="OK")
+
 # === Главная функция ===
 async def main():
     application = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -119,19 +136,30 @@ async def main():
 
     log_info("Команды успешно зарегистрированы")
 
-    # Проверка времени каждую минуту
+    # Получаем порт из переменных окружения Render
+    port = int(os.getenv('PORT', 8080))
+
+    # Запуск HTTP-сервера
+    await start_web_server(port)
+
+    # Запуск бота
+    bot_task = asyncio.create_task(application.run_polling(drop_pending_updates=True))
+
+    # Планирование отправки цитат
+    target_time = dt_time(12, 50)  # Время отправки — 14:25
+
     while True:
-        now = datetime.now(timezone.utc).astimezone()
-        target_time = time(12, 50)  # Время отправки — 13:54
+        now = datetime.now(timezone.utc).astimezone()  # Получаем текущее время с учетом временной зоны
+        today_target_time = datetime.combine(now.date(), target_time)
 
-        if now.time() >= target_time and not any(entry["timestamp"].startswith(now.strftime("%Y-%m-%d")) for entry in load_log(repo)):
-            log_info(f"Начало отправки цитаты в {target_time}")
-            try:
-                await send_quote(application, repo)
-                log_info("Цитата успешно отправлена")
-            except Exception as e:
-                log_error(f"Ошибка при отправке цитаты: {e}")
-
+        if now >= today_target_time and not any(entry["timestamp"].startswith(now.strftime("%Y-%m-%d")) for entry in load_log(repo)):
+            log_info(f"Начало отправки цитаты в {today_target_time.time()}")
+            await send_quote(application, repo)
+            log_info(f"Окончание отправки цитаты в {today_target_time.time()}")
+            # Ждем до следующего дня
+            next_send_time = today_target_time + timedelta(days=1)
+            while datetime.now(timezone.utc).astimezone() < next_send_time:
+                await asyncio.sleep(60)  # Ждем каждую минуту
         await asyncio.sleep(60)  # Проверяем каждую минуту
 
 if __name__ == '__main__':
