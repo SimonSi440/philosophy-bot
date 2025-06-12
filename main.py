@@ -35,9 +35,14 @@ def log_error(message):
 
 # === Инициализация GitHub ===
 def init_github():
-    g = Github(GITHUB_TOKEN)
-    repo = g.get_repo(f"{REPO_OWNER}/{REPO_NAME}")
-    return repo
+    try:
+        g = Github(GITHUB_TOKEN)
+        repo = g.get_repo(f"{REPO_OWNER}/{REPO_NAME}")
+        log_info("Успешно инициализирован GitHub репозиторий")
+        return repo
+    except Exception as e:
+        log_error(f"Ошибка при инициализации GitHub: {e}")
+        return None
 
 # === Загрузка цитат из файла quotes.txt ===
 def load_quotes():
@@ -107,6 +112,10 @@ async def send_quote(application, repo):
     except Exception as e:
         log_error(f"Ошибка при отправке: {e}")
 
+# === Планировщик задач ===
+async def job_wrapper(application, repo):
+    await send_quote(application, repo)
+
 # === Расписание ===
 def random_time(start_hour=8, end_hour=12):
     hour = random.randint(start_hour, end_hour)
@@ -114,7 +123,7 @@ def random_time(start_hour=8, end_hour=12):
     return f"{hour:02d}:{minute:02d}"
 
 # === HTTP-сервер ===
-async def start_web_server(port):
+async def start_web_server(port, repo):
     app = web.Application()
     app.router.add_get('/', handle_request)
     runner = web.AppRunner(app)
@@ -129,6 +138,7 @@ async def handle_request(request):
 # === Главная функция ===
 async def main():
     application = ApplicationBuilder().token(BOT_TOKEN).build()
+    repo = init_github()
 
     # Добавление команд
     application.add_handler(CommandHandler("start", start))
@@ -140,13 +150,12 @@ async def main():
     port = int(os.getenv('PORT', 8080))
 
     # Запуск HTTP-сервера
-    await start_web_server(port)
+    await start_web_server(port, repo)
 
     # Запуск бота
     await application.run_polling(drop_pending_updates=True)
 
     # Планирование отправки цитат
-    repo = init_github()
     daily_time = random_time()
     log_info(f"Цитата будет отправлена в {daily_time}")
     next_send_time = datetime.combine(datetime.now().date(), dt_time.fromisoformat(daily_time))
@@ -155,7 +164,7 @@ async def main():
         now = datetime.now()
         if now >= next_send_time and now.date() == next_send_time.date():
             log_info(f"Начало отправки цитаты в {now.time()}")
-            await send_quote(application, repo)
+            await job_wrapper(application, repo)
             log_info(f"Окончание отправки цитаты в {now.time()}")
             # Обновляем время следующей отправки на завтра
             next_send_time += timedelta(days=1)
