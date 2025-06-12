@@ -1,16 +1,12 @@
 import asyncio
-from datetime import datetime, time as dt_time, timedelta
+from datetime import datetime, time, timezone
 import os
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from aiohttp import web
 from github import Github
 import json
 import random
 
-# === Импорт необходимых модулей ===
-import os
-
-# === Конфиг из переменных окружения ===
+# === Конфигурация ===
 BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID", "@your_channel")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "YOUR_GITHUB_TOKEN")
@@ -19,7 +15,7 @@ REPO_NAME = os.getenv("REPO_NAME", "philosophy-bot")
 LOG_FILE = "quotes_log.json"
 QUOTES_FILE = "quotes.txt"
 
-# === Логирование в консоль ===
+# === Логирование ===
 def log_info(message):
     print(f"[INFO] {datetime.now()} - {message}")
 
@@ -37,7 +33,7 @@ def init_github():
         log_error(f"Ошибка при инициализации GitHub: {e}")
         return None
 
-# === Загрузка цитат из файла quotes.txt ===
+# === Загрузка цитат ===
 def load_quotes():
     try:
         with open(QUOTES_FILE, "r", encoding="utf-8") as f:
@@ -45,10 +41,10 @@ def load_quotes():
             log_info(f"Загружено {len(quotes)} цитат")
             return quotes
     except Exception as e:
-        log_error(f"Не удалось загрузить цитаты: {e}")
+        log_error(f"Ошибка при загрузке цитат: {e}")
         return []
 
-# === Загрузка логов отправленных цитат ===
+# === Загрузка логов ===
 def load_log(repo):
     try:
         contents = repo.get_contents(LOG_FILE)
@@ -56,10 +52,10 @@ def load_log(repo):
         log_info(f"Загружено {len(log_data)} записей из логов")
         return log_data
     except Exception as e:
-        log_error(f"Не удалось загрузить логи: {e}")
+        log_error(f"Ошибка при загрузке логов: {e}")
         return []
 
-# === Сохранение логов отправленных цитат ===
+# === Сохранение логов ===
 def save_log(repo, log):
     try:
         contents = repo.get_contents(LOG_FILE)
@@ -71,9 +67,9 @@ def save_log(repo, log):
         )
         log_info("Логи успешно обновлены на GitHub")
     except Exception as e:
-        log_error(f"Не удалось сохранить логи: {e}")
+        log_error(f"Ошибка при сохранении логов: {e}")
 
-# === Отправка цитаты в Telegram ===
+# === Отправка цитаты ===
 async def send_quote(application, repo):
     quotes = load_quotes()
     log = load_log(repo)
@@ -94,69 +90,48 @@ async def send_quote(application, repo):
         save_log(repo, log)
         log_info(f"Цитата успешно отправлена: {cleaned_quote}")
     except Exception as e:
-        log_error(f"Ошибка при отправке: {e}")
+        log_error(f"Ошибка при отправке цитаты: {e}")
 
-# === Команды для управления ботом ===
-async def start(update, context: ContextTypes.DEFAULT_TYPE):
+# === Команды ===
+async def start(update, context):
     await update.message.reply_text("Привет! Я бот для отправки цитат.")
     log_info(f"Команда /start от {update.effective_user.username}")
 
-async def send_test_quote(update, context: ContextTypes.DEFAULT_TYPE):
-    application = context.application
-    repo = init_github()
-    await send_quote(application, repo)
+async def send_test_quote(update, context, repo):
+    await send_quote(context.application, repo)
     await update.message.reply_text("Тестовая цитата отправлена!")
-    log_info(f"Команда /send_test_quote от {update.effective_user.username}")
+    log_info(f"Тестовая цитата отправлена пользователем {update.effective_user.username}")
 
-async def reset_logs(update, context: ContextTypes.DEFAULT_TYPE):
-    repo = init_github()
+async def reset_logs(update, context, repo):
     save_log(repo, [])
-    await update.message.reply_text("Логи сброшены.")
-    log_info(f"Команда /reset_logs от {update.effective_user.username}")
-
-# === HTTP-сервер ===
-async def start_web_server(port):
-    app = web.Application()
-    app.router.add_get('/', handle_request)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, host='0.0.0.0', port=port)
-    await site.start()
-    log_info(f"HTTP-сервер запущен на порту {port}")
-
-async def handle_request(request):
-    return web.Response(text="OK")
+    await update.message.reply_text("Логи успешно сброшены.")
+    log_info(f"Логи сброшены пользователем {update.effective_user.username}")
 
 # === Главная функция ===
 async def main():
     application = ApplicationBuilder().token(BOT_TOKEN).build()
     repo = init_github()
 
-    # Добавление команд
+    # Регистрация команд
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("send_test_quote", send_test_quote))
-    application.add_handler(CommandHandler("reset_logs", reset_logs))
+    application.add_handler(CommandHandler("send_test_quote", lambda update, context: asyncio.create_task(send_test_quote(update, context, repo))))
+    application.add_handler(CommandHandler("reset_logs", lambda update, context: asyncio.create_task(reset_logs(update, context, repo))))
+
     log_info("Команды успешно зарегистрированы")
 
-    # Получаем порт из переменных окружения Render
-    port = int(os.getenv('PORT', 8080))
-
-    # Запуск HTTP-сервера
-    await start_web_server(port)
-
-    # Планирование отправки цитат
-    target_time = dt_time(10, 0)  # Время отправки цитаты — 12:50
+    # Проверка времени каждую минуту
     while True:
-        now = datetime.now()
-        today_target_time = datetime.combine(now.date(), target_time)
-        if now >= today_target_time and not any(entry["timestamp"].startswith(now.strftime("%Y-%m-%d")) for entry in load_log(repo)):
-            log_info(f"Начало отправки цитаты в {today_target_time.time()}")
-            await send_quote(application, repo)
-            log_info(f"Окончание отправки цитаты в {today_target_time.time()}")
-            # Ждем до следующего дня
-            next_send_time = today_target_time + timedelta(days=1)
-            while datetime.now() < next_send_time:
-                await asyncio.sleep(60)  # Ждем каждую минуту
+        now = datetime.now(timezone.utc).astimezone()
+        target_time = time(12, 50)  # Время отправки — 13:54
+
+        if now.time() >= target_time and not any(entry["timestamp"].startswith(now.strftime("%Y-%m-%d")) for entry in load_log(repo)):
+            log_info(f"Начало отправки цитаты в {target_time}")
+            try:
+                await send_quote(application, repo)
+                log_info("Цитата успешно отправлена")
+            except Exception as e:
+                log_error(f"Ошибка при отправке цитаты: {e}")
+
         await asyncio.sleep(60)  # Проверяем каждую минуту
 
 if __name__ == '__main__':
