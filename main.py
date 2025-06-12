@@ -145,7 +145,7 @@ async def main():
     await start_web_server(port)
 
     # Планирование отправки цитат
-    target_time = dt_time(10, 0)  # Время отправки цитаты — 10:00
+    target_time = dt_time(10, 0)  # Время отправки цитаты — 12:35
     while True:
         now = datetime.now()
         today_target_time = datetime.combine(now.date(), target_time)
