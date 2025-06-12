@@ -109,9 +109,35 @@ async def test_send(application: ApplicationBuilder):
         print(f"[{datetime.now()}] Ошибка при тестовой отправке: {e}")
 
 # --- FastAPI маршруты ---
+
 @app.get("/")
 async def root():
     return {"status": "Telegram Bot is running!"}
+
+@app.get("/send")
+async def manual_send():
+    """Ручная отправка цитаты"""
+    quotes = load_quotes()
+    if not quotes:
+        return {"error": "Нет доступных цитат"}
+
+    application = ApplicationBuilder().token(BOT_TOKEN).build()
+    await send_quote(ContextTypes.DEFAULT_TYPE(application.bot))
+
+    return {"message": "Цитата отправлена вручную", "time": datetime.now().isoformat()}
+
+@app.get("/status")
+async def status():
+    """Показывает статус бота и последнюю отправленную цитату"""
+    log = load_log()
+    last_quote = log[-1]["quote"] if log else None
+    return {
+        "status": "Bot is active",
+        "current_time": datetime.now().isoformat(),
+        "last_quote": last_quote,
+        "total_quotes_sent": len(log),
+        "next_send_time": schedule.next_run().strftime("%Y-%m-%d %H:%M:%S") if schedule.next_run() else "Не запланировано"
+    }
 
 # --- Точка входа ---
 async def main():
