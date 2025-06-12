@@ -1,5 +1,1 @@
-python-telegram-bot==20.0
-schedule
-pandas
-telegram
-Flask
+pip install fastapi python-telegram-bot gunicorn uvicorn
