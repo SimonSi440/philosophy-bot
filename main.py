@@ -7,10 +7,7 @@ from github import Github
 import json
 import random
 
-# === Импорт необходимых модулей ===
-import os
-
-# === Конфигурация ===
+# === Конфиг из переменных окружения ===
 BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID", "@your_channel")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "YOUR_GITHUB_TOKEN")
@@ -45,7 +42,7 @@ def load_quotes():
             log_info(f"Загружено {len(quotes)} цитат")
             return quotes
     except Exception as e:
-        log_error(f"Ошибка при загрузке цитат: {e}")
+        log_error(f"Не удалось загрузить цитаты: {e}")
         return []
 
 # === Загрузка логов ===
@@ -56,7 +53,7 @@ def load_log(repo):
         log_info(f"Загружено {len(log_data)} записей из логов")
         return log_data
     except Exception as e:
-        log_error(f"Ошибка при загрузке логов: {e}")
+        log_error(f"Не удалось загрузить логи: {e}")
         return []
 
 # === Сохранение логов ===
@@ -71,7 +68,7 @@ def save_log(repo, log):
         )
         log_info("Логи успешно обновлены на GitHub")
     except Exception as e:
-        log_error(f"Ошибка при сохранении логов: {e}")
+        log_error(f"Не удалось сохранить логи: {e}")
 
 # === Отправка цитаты ===
 async def send_quote(application, repo):
@@ -94,22 +91,24 @@ async def send_quote(application, repo):
         save_log(repo, log)
         log_info(f"Цитата успешно отправлена: {cleaned_quote}")
     except Exception as e:
-        log_error(f"Ошибка при отправке цитаты: {e}")
+        log_error(f"Ошибка при отправке: {e}")
 
-# === Команды ===
-async def start(update, context):
+# === Команды для управления ботом ===
+async def start(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Привет! Я бот для отправки цитат.")
     log_info(f"Команда /start от {update.effective_user.username}")
 
-async def send_test_quote(update, context, repo):
+async def send_test_quote(update, context: ContextTypes.DEFAULT_TYPE):
+    repo = init_github()
     await send_quote(context.application, repo)
     await update.message.reply_text("Тестовая цитата отправлена!")
-    log_info(f"Тестовая цитата отправлена пользователем {update.effective_user.username}")
+    log_info(f"Команда /send_test_quote от {update.effective_user.username}")
 
-async def reset_logs(update, context, repo):
+async def reset_logs(update, context: ContextTypes.DEFAULT_TYPE):
+    repo = init_github()
     save_log(repo, [])
-    await update.message.reply_text("Логи успешно сброшены.")
-    log_info(f"Логи сброшены пользователем {update.effective_user.username}")
+    await update.message.reply_text("Логи сброшены.")
+    log_info(f"Команда /reset_logs от {update.effective_user.username}")
 
 # === HTTP-сервер ===
 async def start_web_server(port):
@@ -129,10 +128,10 @@ async def main():
     application = ApplicationBuilder().token(BOT_TOKEN).build()
     repo = init_github()
 
-    # Регистрация команд
+    # Добавление команд
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("send_test_quote", lambda update, context: send_test_quote(update, context, repo)))
-    application.add_handler(CommandHandler("reset_logs", lambda update, context: reset_logs(update, context, repo)))
+    application.add_handler(CommandHandler("send_test_quote", send_test_quote))
+    application.add_handler(CommandHandler("reset_logs", reset_logs))
 
     log_info("Команды успешно зарегистрированы")
 
@@ -142,14 +141,10 @@ async def main():
     # Запуск HTTP-сервера
     await start_web_server(port)
 
-    # Запуск бота
-    bot_task = asyncio.create_task(application.run_polling(drop_pending_updates=True))
-
-    # Планирование отправки цитат
-    target_time = dt_time(12, 50)  # Время отправки — 14:41
-
+    # Планирование отправки цитаты
+    target_time = dt_time(12, 50)  # Время отправки — 14:57
     while True:
-        now = datetime.now(timezone.utc).astimezone()  # Получаем текущее время с учетом временной зоны
+        now = datetime.now(timezone.utc).astimezone()  # Текущее время с учетом временной зоны
         today_target_time = datetime.combine(now.date(), target_time)
 
         if now >= today_target_time and not any(entry["timestamp"].startswith(now.strftime("%Y-%m-%d")) for entry in load_log(repo)):
@@ -159,8 +154,14 @@ async def main():
             # Ждем до следующего дня
             next_send_time = today_target_time + timedelta(days=1)
             while datetime.now(timezone.utc).astimezone() < next_send_time:
-                await asyncio.sleep(60)  # Ждем каждую минуту
-        await asyncio.sleep(60)  # Проверяем каждую минуту
+                await asyncio.sleep(60)
+
+        # Запускаем бота один раз вне планирования
+        if not hasattr(main, 'bot_started'):
+            bot_task = asyncio.create_task(application.run_polling(drop_pending_updates=True))
+            setattr(main, 'bot_started', True)
+
+        await asyncio.sleep(60)
 
 if __name__ == '__main__':
     asyncio.run(main())
