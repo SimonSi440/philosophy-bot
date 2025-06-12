@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, time as dt_time, timedelta
+from datetime import datetime, time as dt_time
 import os
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from aiohttp import web
@@ -16,12 +16,12 @@ REPO_NAME = os.getenv("REPO_NAME", "philosophy-bot")
 LOG_FILE = "quotes_log.json"
 QUOTES_FILE = "quotes.txt"
 
-# === Логирование в файл ===
+# === Логирование в консоль ===
 def log_info(message):
-    print(f"[INFO] {datetime.now()} - {message}")  # Вывод в консоль для отладки
+    print(f"[INFO] {datetime.now()} - {message}")
 
 def log_error(message):
-    print(f"[ERROR] {datetime.now()} - {message}")  # Вывод в консоль для отладки
+    print(f"[ERROR] {datetime.now()} - {message}")
 
 # === Инициализация GitHub ===
 def init_github():
@@ -141,8 +141,11 @@ async def main():
     # Запуск HTTP-сервера
     await start_web_server(port)
 
+    # Запуск бота
+    await application.run_polling(drop_pending_updates=True)
+
     # Планирование отправки цитат
-    target_time = dt_time(10, 0)  # Время отправки цитаты — 11:40
+    target_time = dt_time(10, 0)  # Время отправки цитаты — 10:00
     while True:
         now = datetime.now()
         today_target_time = datetime.combine(now.date(), target_time)
