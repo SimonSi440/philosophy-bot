@@ -93,7 +93,7 @@ async def send_quote(application, repo):
     except Exception as e:
         log_error(f"Ошибка при отправке: {e}")
 
-# === Команды для управления ботом ===
+# === Команды ===
 async def start(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Привет! Я бот для отправки цитат.")
     log_info(f"Команда /start от {update.effective_user.username}")
@@ -128,7 +128,7 @@ async def main():
     application = ApplicationBuilder().token(BOT_TOKEN).build()
     repo = init_github()
 
-    # Добавление команд
+    # Регистрация команд
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("send_test_quote", send_test_quote))
     application.add_handler(CommandHandler("reset_logs", reset_logs))
@@ -141,25 +141,23 @@ async def main():
     # Запуск HTTP-сервера
     await start_web_server(port)
 
+    # Запуск бота
+    bot_task = asyncio.create_task(application.run_polling(drop_pending_updates=True))
+
     # Планирование отправки цитаты
-    target_time = dt_time(12, 50)  # Время отправки — 14:57
+    target_time = dt_time(12, 50)  # Время отправки — 15:30
+
     while True:
-        now = datetime.now(timezone.utc).astimezone()  # Текущее время с учетом временной зоны
+        now = datetime.now(timezone.utc).astimezone()  # Текущее время
         today_target_time = datetime.combine(now.date(), target_time)
 
         if now >= today_target_time and not any(entry["timestamp"].startswith(now.strftime("%Y-%m-%d")) for entry in load_log(repo)):
             log_info(f"Начало отправки цитаты в {today_target_time.time()}")
             await send_quote(application, repo)
             log_info(f"Окончание отправки цитаты в {today_target_time.time()}")
-            # Ждем до следующего дня
             next_send_time = today_target_time + timedelta(days=1)
             while datetime.now(timezone.utc).astimezone() < next_send_time:
                 await asyncio.sleep(60)
-
-        # Запускаем бота один раз вне планирования
-        if not hasattr(main, 'bot_started'):
-            bot_task = asyncio.create_task(application.run_polling(drop_pending_updates=True))
-            setattr(main, 'bot_started', True)
 
         await asyncio.sleep(60)
 
