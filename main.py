@@ -131,8 +131,8 @@ async def main():
 
     # Регистрация команд
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("send_test_quote", lambda update, context: asyncio.create_task(send_test_quote(update, context, repo))))
-    application.add_handler(CommandHandler("reset_logs", lambda update, context: asyncio.create_task(reset_logs(update, context, repo))))
+    application.add_handler(CommandHandler("send_test_quote", lambda update, context: send_test_quote(update, context, repo)))
+    application.add_handler(CommandHandler("reset_logs", lambda update, context: reset_logs(update, context, repo)))
 
     log_info("Команды успешно зарегистрированы")
 
@@ -146,7 +146,7 @@ async def main():
     bot_task = asyncio.create_task(application.run_polling(drop_pending_updates=True))
 
     # Планирование отправки цитат
-    target_time = dt_time(12, 50)  # Время отправки — 14:25
+    target_time = dt_time(12, 50)  # Время отправки — 14:41
 
     while True:
         now = datetime.now(timezone.utc).astimezone()  # Получаем текущее время с учетом временной зоны
