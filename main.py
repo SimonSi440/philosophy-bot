@@ -92,7 +92,7 @@ def main():
 
     # Тестовая отправка при запуске
     print("[ТЕСТ] Отправляем тестовую цитату...")
-asyncio.run(send_quote(application))
+    asyncio.run(send_quote(application))
 
     # Бесконечный цикл планировщика
     while True:
