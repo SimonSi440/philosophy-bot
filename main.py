@@ -1,31 +1,32 @@
 import os
 import random
 import json
-from datetime import datetime
+from datetime import datetime, time as dt_time
 from telegram.ext import ApplicationBuilder, ContextTypes
 import schedule
 import asyncio
-import time
-from flask import Flask
+import time as t
+import logging
 
-# Пути к файлам
+# --- Конфиг ---
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHANNEL_ID = os.getenv("CHANNEL_ID")
+
 QUOTE_FILE = "quotes.txt"
 LOG_FILE = "quotes_log.json"
 
-# Создание Flask-приложения
-app = Flask(__name__)
+# --- Логирование ---
+logging.basicConfig(level=logging.INFO)
 
-# Загрузка цитат из CSV (как обычный текст)
+# --- Функции ---
 def load_quotes():
     try:
         with open(QUOTE_FILE, "r", encoding="utf-8") as f:
-            quotes = [line.strip() for line in f if line.strip()]
-            return quotes
+            return [line.strip() for line in f if line.strip()]
     except FileNotFoundError:
-        print(f"[{datetime.now()}] Файл цитат {QUOTE_FILE} не найден.")
+        print(f"[{datetime.now()}] Файл {QUOTE_FILE} не найден.")
         return []
 
-# Загрузка лога
 def load_log():
     try:
         with open(LOG_FILE, "r", encoding="utf-8") as f:
@@ -33,18 +34,15 @@ def load_log():
     except (FileNotFoundError, json.JSONDecodeError):
         return []
 
-# Сохранение лога
 def save_log(log):
     with open(LOG_FILE, "w", encoding="utf-8") as f:
         json.dump(log, f, ensure_ascii=False, indent=2)
 
-# Случайное время публикации
 def random_time(start_hour=20, end_hour=21):
     hour = random.randint(start_hour, end_hour)
     minute = random.randint(0, 59)
     return f"{hour:02d}:{minute:02d}"
 
-# Получить новую неповторённую цитату
 def get_new_quote(quotes, log):
     used_quotes = [entry["quote"] for entry in log]
     available_quotes = [q for q in quotes if q not in used_quotes]
@@ -55,19 +53,18 @@ def get_new_quote(quotes, log):
 
     return random.choice(available_quotes)
 
-# Отправка цитаты в Telegram
-async def send_quote(application: ApplicationBuilder):
+async def send_quote(context: ContextTypes.DEFAULT_TYPE):
     quotes = load_quotes()
     log = load_log()
 
     if not quotes:
-        print(f"[{datetime.now()}] Нет доступных цитат для отправки.")
+        print(f"[{datetime.now()}] Нет доступных цитат.")
         return
 
     quote = get_new_quote(quotes, log)
 
     try:
-        await application.bot.send_message(chat_id=config.CHANNEL_ID, text=quote)
+        await context.bot.send_message(chat_id=CHANNEL_ID, text=quote)
         log.append({
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "quote": quote
@@ -77,51 +74,37 @@ async def send_quote(application: ApplicationBuilder):
     except Exception as e:
         print(f"[{datetime.now()}] Ошибка при отправке: {e}")
 
-# Обёртка для планировщика
-async def job_wrapper(application: ApplicationBuilder):
-    await send_quote(application)
+# --- Запуск бота ---
+async def main():
+    application = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# Функция для запуска задачи в планировщике
-def scheduled_job(application: ApplicationBuilder):
-    asyncio.create_task(job_wrapper(application))
-
-# Основная функция запуска бота
-def main():
-    application = ApplicationBuilder().token(config.BOT_TOKEN).build()
-
-    # Ежедневное расписание
-    def schedule_daily():
-        daily_time = random_time()
-        print(f"Цитата будет отправлена в {daily_time}")
-        schedule.every().day.at(daily_time).do(scheduled_job, application=application)
-
-    schedule_daily()
-
-    # Тестовая отправка при запуске
+    # Тестовая отправка
     print("[ТЕСТ] Отправляем тестовую цитату...")
     try:
-        asyncio.run(send_quote(application))
+        await send_quote(ContextTypes.DEFAULT_TYPE(application.bot_data))
     except Exception as e:
         print(f"[{datetime.now()}] Ошибка при тестовой отправке: {e}")
+
+    # Ежедневное расписание
+    def schedule_jobs():
+        daily_time = random_time()
+        print(f"Цитата будет отправлена в {daily_time}")
+        schedule.every().day.at(daily_time).do(lambda: asyncio.create_task(send_quote(ContextTypes.DEFAULT_TYPE(application.bot_data))))
+
+    schedule_jobs()
 
     # Бесконечный цикл планировщика
     while True:
         schedule.run_pending()
-        time.sleep(1)
+        t.sleep(1)
 
-        now = datetime.now().time()
+        now = dt_time(datetime.now().hour, datetime.now().minute)
         if now.hour == 0 and now.minute < 2:
             print("Сброс расписания на новый день")
             schedule.clear()
-            schedule_daily()
-            time.sleep(120)  # Чтобы не вызвать дважды
+            schedule_jobs()
+            t.sleep(120)
 
-# Создаем маршрут для проверки работы сервера
-@app.route('/')
-def index():
-    return 'Telegram Bot is running!'
-
-# Запуск Flask-приложения
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+# --- Точка входа ---
+if __name__ == "__main__":
+    asyncio.run(main())
