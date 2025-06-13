@@ -13,7 +13,7 @@ from fastapi import FastAPI
 logging.basicConfig(level=logging.INFO)
 
 # --- Конфиг ---
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("7402291623:AAFo_br8upbId8VKm_MUwAAM7LRH3aixQ0E")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 
 QUOTE_FILE = "quotes.txt"
