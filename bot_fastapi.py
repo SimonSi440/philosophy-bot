@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 
 # --- Конфиг ---
 BOT_TOKEN = os.getenv("7402291623:AAFo_br8upbId8VKm_MUwAAM7LRH3aixQ0E")
-CHANNEL_ID = os.getenv("CHANNEL_ID")
+CHANNEL_ID = os.getenv("-1002875911388")
 
 QUOTE_FILE = "quotes.txt"
 LOG_FILE = "quotes_log.json"
