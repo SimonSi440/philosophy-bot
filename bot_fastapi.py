@@ -42,7 +42,7 @@ def save_log(log):
         json.dump(log, f, ensure_ascii=False, indent=2)
 
 # --- Выбор случайного времени ---
-def random_time(start_hour=9, end_hour=20):
+def random_time(start_hour=10, end_hour=11):
     hour = random.randint(start_hour, end_hour)
     minute = random.randint(0, 59)
     return f"{hour:02d}:{minute:02d}"
