@@ -14,4 +14,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Команда запуска через Gunicorn (с поддержкой async)
-CMD ["/venv/bin/python", "-m", "uvicorn", "--host", "0.0.0.0", "--port", "5000", "bot_fastapi:app"]
+CMD ["sh", "-c", "gunicorn -w 1 -k uvicorn.workers.UvicornWorker bot_fastapi:app --bind 0.0.0.0:${PORT:-5000}"]
