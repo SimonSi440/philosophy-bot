@@ -41,7 +41,10 @@ logger = initialize_google_logging()
 
 def log_message(message):
     try:
-        logger.log_text(message)
+        logger.log_struct({
+            "timestamp": datetime.now(TIMEZONE).isoformat(),
+            "message": message
+        })
     except Exception as e:
         print(f"[ТЕСТ] Ошибка при отправке лога в Google Cloud Logging: {e}")
 
