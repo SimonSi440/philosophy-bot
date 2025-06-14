@@ -196,6 +196,11 @@ async def status():
         "error_count": error_count
     }
 
+# --- Маршрут для корневого URL ---
+@app.get("/")
+async def root():
+    return {"message": "Добро пожаловать в Philosophy Bot API", "endpoints": ["/status", "/send"]}
+
 # --- Точка входа ---
 if __name__ == "__main__":
     import uvicorn
