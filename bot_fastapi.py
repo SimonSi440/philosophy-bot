@@ -15,6 +15,7 @@ CHANNEL_ID = os.getenv("CHANNEL_ID")
 QUOTE_FILE = "quotes.txt"
 LOG_DIR = "logs"  # Директория для логов
 LOG_FILE = os.path.join(LOG_DIR, "quotes_log.json")  # Путь к файлу логов
+LOG_NAME = "philosophy-bot"  # Имя журнала
 app = FastAPI()
 
 # --- Глобальные переменные ---
@@ -80,7 +81,6 @@ def load_quotes():
 
 # --- Загрузка логов ---
 def load_log():
-    global LOG_FILE  # Добавляем глобальное объявление переменной LOG_FILE
     try:
         with open(LOG_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -90,7 +90,6 @@ def load_log():
 
 # --- Сохранение логов ---
 def save_log(log):
-    global LOG_FILE  # Добавляем глобальное объявление переменной LOG_FILE
     try:
         # Убедимся, что директория существует
         os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
