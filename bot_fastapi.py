@@ -142,7 +142,7 @@ async def send_quote():
         error_count += 1
 
 # --- Время следующей отправки ---
-def get_next_send_time(start_hour=8, end_hour=10):
+def get_next_send_time(start_hour=11, end_hour=11):
     now = datetime.now(TIMEZONE)  # Используем offset-aware datetime
     hour = random.randint(start_hour, end_hour)
     minute = random.randint(0, 59)
